@@ -3,144 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>متجر المشروبات - واجهة العميل</title>
+    <title>متجر المشروبات</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <script>
         if (!localStorage.getItem('currentCustomer')) { window.location.href = 'auth/login.html'; }
     </script>
-
-    <div id="orderSection" class="main-container">
-        <header class="customer-header">
-            <h1>☕ متجر المشروبات</h1>
-            <div class="user-info">
-                <span id="userNameDisplay"></span>
-                <button onclick="customerLogout()" class="logout-btn">تسجيل خروج</button>
+    <header>
+        <h1>☕ متجر المشروبات</h1>
+        <div class="user-info">
+            <span id="userNameDisplay"></span>
+            <button onclick="localStorage.clear(); window.location.reload();" class="logout-btn">خروج</button>
+        </div>
+    </header>
+    <div class="container">
+        <div class="orders-layout">
+            <div class="products-section">
+                <div class="product-grid" id="productGrid"></div>
             </div>
-        </header>
-
-        <div class="container">
-            <div class="orders-layout">
-                <div class="products-section">
-                    <h2>📋 اختر المشروبات</h2>
-                    <div style="margin-bottom:10px;">
-                        <button onclick="addAllProductsToOrder()" class="add-all-btn">إضافة جميع المنتجات للطلب</button>
-                    </div>
-                    <div class="product-grid" id="productGrid"></div>
-                </div>
-
-                <div class="order-summary">
-                    <h2>🛒 سلة الطلب</h2>
-                    <div id="orderItems" class="order-items"><p style="color: #999;">لم يتم اختيار أي عناصر</p></div>
-                    <div class="order-notes">
-                        <label>ملاحظات:</label>
-                        <textarea id="orderNotes" placeholder="اكتب ملاحظتك هنا..." rows="3" style="width:100%;"></textarea>
-                    </div>
-                    <div class="order-total"><h3>عدد العناصر: <span id="totalPrice">0</span></h3></div>
-                    <button onclick="submitOrder()" class="submit-btn">✓ إرسال الطلب</button>
-                    <button onclick="clearOrder()" class="clear-btn">✕ مسح الطلب</button>
-                </div>
-            </div>
-
-            <div class="orders-tracking">
-                <h2>📦 تتبع طلباتك</h2>
-                <div id="ordersHistory" class="orders-history"></div>
+            <div class="order-summary">
+                <h3>🛒 سلة الطلب</h3>
+                <div id="orderItems"></div>
+                <textarea id="orderNotes" placeholder="ملاحظات..." rows="2" style="width:100%; margin-top:10px; padding:5px;"></textarea>
+                <div style="margin-top:10px; text-align:center;"><strong>الإجمالي: <span id="totalItems">0</span></strong></div>
+                <button onclick="submitOrder()" class="submit-btn">تأكيد الطلب</button>
             </div>
         </div>
+        <div class="orders-tracking">
+            <h3>📦 طلباتي</h3>
+            <div id="history"></div>
+        </div>
     </div>
-
     <script>
-        const products = ['شاي', 'شاي أخضر', 'يانسون', 'نعناع', 'كركدية', 'قرفة', 'جنزبيل', 'كوفي ميكس', 'كوفي ميكس 4*1', 'نسكافيه3*1', 'نسكافيه 2*1', 'نسكافيه بلاك', 'كابتشينو بندق', 'كابتشينو موكا', 'كابتشينو لاتيه', 'هوت شوكلت', 'قهوة تركي', 'قهوة فرنساوي', 'قرفة بحليب', 'شاي بحليب'];
-        let currentOrder = [];
-
-        function renderProducts() {
+        const products = ['شاي', 'يانسون', 'نعناع', 'قهوة تركي', 'نسكافيه', 'شاي أخضر', 'كركدية', 'قرفة'];
+        let cart = [];
+        function render() {
             const grid = document.getElementById('productGrid');
             const inv = JSON.parse(localStorage.getItem('inventory')) || {};
-            grid.innerHTML = '';
-            products.forEach((name, idx) => {
-                const stock = inv[name] ? inv[name].stock : 50;
-                grid.innerHTML += `
-                    <div class="card ${stock <= 0 ? 'out-of-stock' : ''}">
-                        <h3>${name}</h3>
-                        <div class="quantity-selector">
-                            <button onclick="changeQty(${idx}, -1)">-</button>
-                            <input type="number" id="qty${idx}" value="0" readonly>
-                            <button onclick="changeQty(${idx}, 1)">+</button>
-                        </div>
-                        <button onclick="addToOrder(${idx}, '${name}')" class="add-btn" ${stock <= 0 ? 'disabled' : ''}>إضافة</button>
-                    </div>`;
-            });
-        }
-
-        function changeQty(idx, amt) {
-            const input = document.getElementById('qty' + idx);
-            input.value = Math.max(0, parseInt(input.value) + amt);
-        }
-
-        function addToOrder(idx, name) {
-            const qty = parseInt(document.getElementById('qty' + idx).value);
-            if (qty <= 0) return;
-            const existing = currentOrder.find(i => i.name === name);
-            if (existing) existing.qty += qty; else currentOrder.push({ name, qty });
-            document.getElementById('qty' + idx).value = 0;
-            updateOrderDisplay();
-        }
-
-        function updateOrderDisplay() {
-            const container = document.getElementById('orderItems');
-            let total = 0;
-            if (currentOrder.length === 0) {
-                container.innerHTML = '<p style="color: #999;">السلة فارغة</p>';
-                document.getElementById('totalPrice').textContent = '0';
-                return;
-            }
-            container.innerHTML = currentOrder.map((item, idx) => {
-                total += item.qty;
-                return `<div class="order-item"><span>${item.name} (${item.qty})</span><button onclick="removeFromOrder(${idx})" class="remove-btn">✕</button></div>`;
-            }).join('');
-            document.getElementById('totalPrice').textContent = total;
-        }
-
-        function removeFromOrder(idx) { currentOrder.splice(idx, 1); updateOrderDisplay(); }
-
-        function submitOrder() {
-            if (currentOrder.length === 0) return;
-            const orders = JSON.parse(localStorage.getItem('orders')) || [];
-            orders.push({
-                id: Date.now(),
-                customerName: localStorage.getItem('currentCustomer'),
-                items: currentOrder,
-                date: new Date().toLocaleString('ar-EG'),
-                status: 'قيد المراجعة',
-                notes: document.getElementById('orderNotes').value
-            });
-            localStorage.setItem('orders', JSON.stringify(orders));
-            alert('تم الإرسال!');
-            clearOrder();
-            loadCustomerOrders();
-        }
-
-        function clearOrder() { currentOrder = []; document.getElementById('orderNotes').value = ''; updateOrderDisplay(); }
-
-        function loadCustomerOrders() {
-            const name = localStorage.getItem('currentCustomer');
-            const orders = (JSON.parse(localStorage.getItem('orders')) || []).filter(o => o.customerName === name);
-            document.getElementById('ordersHistory').innerHTML = orders.reverse().map(o => `
-                <div class="order-card ${o.status === 'موافق عليه' ? 'approved' : ''}">
-                    <strong>طلب #${o.id.toString().slice(-4)}</strong> - ${o.status}
-                    <p>${o.items.map(i => i.name + ' (' + i.qty + ')').join(', ')}</p>
+            grid.innerHTML = products.map((p, i) => `
+                <div class="card">
+                    <h3>${p}</h3>
+                    <div class="quantity-selector">
+                        <button onclick="changeQty(${i},-1)">-</button>
+                        <input type="number" id="qty${i}" value="0" readonly>
+                        <button onclick="changeQty(${i},1)">+</button>
+                    </div>
+                    <button onclick="add(${i},'${p}')" class="add-btn">إضافة</button>
                 </div>`).join('');
         }
-
-        function customerLogout() { localStorage.removeItem('currentCustomer'); window.location.href = 'auth/login.html'; }
-
-        window.onload = () => {
-            document.getElementById('userNameDisplay').textContent = `مرحباً، ${localStorage.getItem('currentCustomer')}`;
-            renderProducts();
-            loadCustomerOrders();
-            setInterval(loadCustomerOrders, 5000);
-        };
+        function changeQty(i,a) { const el = document.getElementById('qty'+i); el.value = Math.max(0, parseInt(el.value)+a); }
+        function add(i,p) {
+            const q = parseInt(document.getElementById('qty'+i).value);
+            if(q<=0) return;
+            const item = cart.find(c=>c.name===p);
+            if(item) item.qty += q; else cart.push({name:p, qty:q});
+            document.getElementById('qty'+i).value = 0;
+            updateCart();
+        }
+        function updateCart() {
+            const container = document.getElementById('orderItems');
+            container.innerHTML = cart.map((c,i)=>`<div class="order-item"><span>${c.name} (${c.qty})</span><button onclick="cart.splice(${i},1);updateCart();">✕</button></div>`).join('');
+            document.getElementById('totalItems').textContent = cart.reduce((s,c)=>s+c.qty, 0);
+        }
+        function submitOrder() {
+            if(cart.length===0) return;
+            const orders = JSON.parse(localStorage.getItem('orders')) || [];
+            orders.push({ id: Date.now(), customerName: localStorage.getItem('currentCustomer'), items: cart, status: 'قيد المراجعة', date: new Date().toLocaleTimeString() });
+            localStorage.setItem('orders', JSON.stringify(orders));
+            cart = []; updateCart(); loadHistory(); alert('تم الطلب!');
+        }
+        function loadHistory() {
+            const my = (JSON.parse(localStorage.getItem('orders')) || []).filter(o=>o.customerName === localStorage.getItem('currentCustomer'));
+            document.getElementById('history').innerHTML = my.reverse().map(o=>`<div class="order-card ${o.status==='موافق عليه'?'approved':''}"><strong>طلب #${o.id.toString().slice(-4)}</strong> - ${o.status}</div>`).join('');
+        }
+        window.onload = () => { document.getElementById('userNameDisplay').textContent = localStorage.getItem('currentCustomer'); render(); loadHistory(); };
     </script>
 </body>
 </html>
