@@ -12,7 +12,7 @@
     </script>
     <header>
         <h1>📊 لوحة التحكم</h1>
-        <button onclick="localStorage.clear(); window.location.href='auth/login.html';" class="logout-btn">خروج</button>
+        <button onclick="localStorage.removeItem('adminUser'); window.location.href='auth/login.html';" class="logout-btn">خروج</button>
     </header>
     <div class="container">
         <div class="tabs">
@@ -36,6 +36,8 @@
         </div>
     </div>
     <script>
+        const allProducts = ['شاي', 'شاي أخضر', 'يانسون', 'نعناع', 'كركدية', 'قرفة', 'جنزبيل', 'كوفي ميكس', 'كوفي ميكس 4*1', 'نسكافيه3*1', 'نسكافيه 2*1', 'نسكافيه بلاك', 'كابتشينو بندق', 'كابتشينو موكا', 'كابتشينو لاتيه', 'هوت شوكلت', 'قهوة تركي', 'قهوة فرنساوي', 'قرفة بحليب', 'شاي بحليب'];
+        
         function switchTab(t) {
             document.querySelectorAll('.tab-content').forEach(e=>e.style.display='none');
             document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -47,26 +49,38 @@
         }
         function loadOrders() {
             const orders = JSON.parse(localStorage.getItem('orders')) || [];
-            document.getElementById('ordersBody').innerHTML = orders.reverse().map((o,i)=>`
+            document.getElementById('ordersBody').innerHTML = orders.slice().reverse().map((o,i)=> {
+                const originalIndex = orders.length - 1 - i;
+                return `
                 <tr>
                     <td>${o.customerName}</td>
-                    <td>${o.items.length} أصناف</td>
-                    <td>${o.status}</td>
-                    <td>${o.status==='قيد المراجعة'?`<button onclick="approve(${orders.length-1-i})">✅</button>`:'OK'}</td>
-                </tr>`).join('');
+                    <td>${o.items.map(it => it.name + '(' + it.qty + ')').join(', ')}</td>
+                    <td><span class="status ${o.status === 'موافق عليه' ? 'approved' : 'pending'}">${o.status}</span></td>
+                    <td>${o.status==='قيد المراجعة'?`<button onclick="approve(${originalIndex})" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">موافقة</button>`:'✅'}</td>
+                </tr>`}).join('');
         }
         function approve(i) {
             let orders = JSON.parse(localStorage.getItem('orders'));
+            let inv = JSON.parse(localStorage.getItem('inventory')) || {};
+            
+            // خصم الكمية من المخزون عند الموافقة
+            orders[i].items.forEach(item => {
+                if (!inv[item.name]) inv[item.name] = { stock: 50 };
+                inv[item.name].stock = Math.max(0, inv[item.name].stock - item.qty);
+            });
+            
             orders[i].status = 'موافق عليه';
             localStorage.setItem('orders', JSON.stringify(orders));
+            localStorage.setItem('inventory', JSON.stringify(inv));
             loadOrders();
+            alert('تم الموافقة وتحديث المخزون');
         }
         function renderInv() {
             const inv = JSON.parse(localStorage.getItem('inventory')) || {};
-            document.getElementById('invGrid').innerHTML = ['شاي','يانسون','نعناع','قهوة تركي'].map(p=>`
+            document.getElementById('invGrid').innerHTML = allProducts.map(p=>`
                 <div class="card">
                     <h3>${p}</h3>
-                    <input type="number" value="${inv[p]?inv[p].stock:50}" onchange="updateStock('${p}',this.value)" style="width:100%;text-align:center;padding:5px;border-radius:10px;border:1px solid #ddd;">
+                    <input type="number" value="${inv[p]?inv[p].stock:50}" onchange="updateStock('${p}',this.value)" style="width:80%; text-align:center; padding:5px; border-radius:8px; border:1px solid #ddd;">
                 </div>`).join('');
         }
         function updateStock(p,v) {

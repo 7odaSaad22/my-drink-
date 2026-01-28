@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>متجر المشروبات</title>
+    <title>متجر المشروبات - العميل</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
         <h1>☕ متجر المشروبات</h1>
         <div class="user-info">
             <span id="userNameDisplay"></span>
-            <button onclick="localStorage.clear(); window.location.reload();" class="logout-btn">خروج</button>
+            <button onclick="localStorage.removeItem('currentCustomer'); window.location.reload();" class="logout-btn">خروج</button>
         </div>
     </header>
     <div class="container">
@@ -25,32 +25,40 @@
             <div class="order-summary">
                 <h3>🛒 سلة الطلب</h3>
                 <div id="orderItems"></div>
-                <textarea id="orderNotes" placeholder="ملاحظات..." rows="2" style="width:100%; margin-top:10px; padding:5px;"></textarea>
+                <textarea id="orderNotes" placeholder="ملاحظات..." rows="2" style="width:100%; margin-top:10px; padding:8px; border-radius:8px; border:1px solid #ddd;"></textarea>
                 <div style="margin-top:10px; text-align:center;"><strong>الإجمالي: <span id="totalItems">0</span></strong></div>
                 <button onclick="submitOrder()" class="submit-btn">تأكيد الطلب</button>
             </div>
         </div>
         <div class="orders-tracking">
-            <h3>📦 طلباتي</h3>
+            <h3>📦 طلباتي الأخيرة</h3>
             <div id="history"></div>
         </div>
     </div>
     <script>
-        const products = ['شاي', 'يانسون', 'نعناع', 'قهوة تركي', 'نسكافيه', 'شاي أخضر', 'كركدية', 'قرفة'];
+        // القائمة الكاملة (20 منتج) لضمان الاستجابة مع الإدمن
+        const products = ['شاي', 'شاي أخضر', 'يانسون', 'نعناع', 'كركدية', 'قرفة', 'جنزبيل', 'كوفي ميكس', 'كوفي ميكس 4*1', 'نسكافيه3*1', 'نسكافيه 2*1', 'نسكافيه بلاك', 'كابتشينو بندق', 'كابتشينو موكا', 'كابتشينو لاتيه', 'هوت شوكلت', 'قهوة تركي', 'قهوة فرنساوي', 'قرفة بحليب', 'شاي بحليب'];
         let cart = [];
+
         function render() {
             const grid = document.getElementById('productGrid');
             const inv = JSON.parse(localStorage.getItem('inventory')) || {};
-            grid.innerHTML = products.map((p, i) => `
-                <div class="card">
+            grid.innerHTML = '';
+            products.forEach((p, i) => {
+                const stock = inv[p] ? inv[p].stock : 50;
+                grid.innerHTML += `
+                <div class="card ${stock <= 0 ? 'out-of-stock' : ''}">
                     <h3>${p}</h3>
                     <div class="quantity-selector">
                         <button onclick="changeQty(${i},-1)">-</button>
                         <input type="number" id="qty${i}" value="0" readonly>
                         <button onclick="changeQty(${i},1)">+</button>
                     </div>
-                    <button onclick="add(${i},'${p}')" class="add-btn">إضافة</button>
-                </div>`).join('');
+                    <button onclick="add(${i},'${p}')" class="add-btn" ${stock <= 0 ? 'disabled' : ''}>
+                        ${stock <= 0 ? 'نفذ' : 'إضافة'}
+                    </button>
+                </div>`;
+            });
         }
         function changeQty(i,a) { const el = document.getElementById('qty'+i); el.value = Math.max(0, parseInt(el.value)+a); }
         function add(i,p) {
@@ -63,15 +71,15 @@
         }
         function updateCart() {
             const container = document.getElementById('orderItems');
-            container.innerHTML = cart.map((c,i)=>`<div class="order-item"><span>${c.name} (${c.qty})</span><button onclick="cart.splice(${i},1);updateCart();">✕</button></div>`).join('');
+            container.innerHTML = cart.map((c,i)=>`<div class="order-item"><span>${c.name} (${c.qty})</span><button onclick="cart.splice(${i},1);updateCart();" style="color:red; background:none; border:none; cursor:pointer;">✕</button></div>`).join('');
             document.getElementById('totalItems').textContent = cart.reduce((s,c)=>s+c.qty, 0);
         }
         function submitOrder() {
             if(cart.length===0) return;
             const orders = JSON.parse(localStorage.getItem('orders')) || [];
-            orders.push({ id: Date.now(), customerName: localStorage.getItem('currentCustomer'), items: cart, status: 'قيد المراجعة', date: new Date().toLocaleTimeString() });
+            orders.push({ id: Date.now(), customerName: localStorage.getItem('currentCustomer'), items: cart, status: 'قيد المراجعة', date: new Date().toLocaleTimeString('ar-EG') });
             localStorage.setItem('orders', JSON.stringify(orders));
-            cart = []; updateCart(); loadHistory(); alert('تم الطلب!');
+            cart = []; updateCart(); loadHistory(); alert('تم الطلب بنجاح!');
         }
         function loadHistory() {
             const my = (JSON.parse(localStorage.getItem('orders')) || []).filter(o=>o.customerName === localStorage.getItem('currentCustomer'));
