@@ -1,18 +1,22 @@
 body {
     margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: linear-gradient(45deg, #667eea, #764ba2);
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    direction: rtl;
 }
 
-.auth-box {
+.auth-wrapper {
+    width: 100%;
+    padding: 20px;
+}
+
+.auth-container {
     background: white;
-    width: 90%;
-    max-width: 350px;
+    max-width: 400px;
+    margin: auto;
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 15px 35px rgba(0,0,0,0.2);
@@ -20,17 +24,18 @@ body {
 
 .auth-tabs {
     display: flex;
-    background: #f1f1f1;
+    background: #f8f9fa;
 }
 
 .tab-btn {
     flex: 1;
     padding: 15px;
     border: none;
+    background: none;
     cursor: pointer;
     font-weight: bold;
     color: #888;
-    background: #f1f1f1;
+    transition: 0.3s;
 }
 
 .tab-btn.active {
@@ -39,25 +44,30 @@ body {
     border-bottom: 3px solid #667eea;
 }
 
-.form-content {
+.login-form {
     display: none;
     padding: 30px;
     text-align: center;
 }
 
-.form-content.active { display: block; }
+.login-form.active {
+    display: block;
+    animation: fadeIn 0.5s;
+}
+
+h2 { margin-bottom: 20px; color: #333; }
 
 input {
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
-    border: 1px solid #ddd;
+    border: 2px solid #eee;
     border-radius: 10px;
     outline: none;
-    box-sizing: border-box;
+    text-align: center;
 }
 
-.btn-primary {
+.submit-btn {
     width: 100%;
     padding: 12px;
     border: none;
@@ -69,3 +79,8 @@ input {
 }
 
 .admin-btn { background: #333; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
